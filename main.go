@@ -85,6 +85,14 @@ func main() {
 		out.Reset()
 	}
 
+	gitPullCmd := exec.Command("git", "pull")
+	gitPullCmd.Stdout = &out
+	err = gitPullCmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+	out.Reset()
+
 	gitCheckoutNewbranchCmd := exec.Command("git", "checkout", "-b", newBranch)
 	gitCheckoutNewbranchCmd.Stdout = &out
 	err = gitCheckoutNewbranchCmd.Run()
@@ -124,6 +132,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	removeContents("./pipes")
+	removeContents("./systems")
 
 	for _, zipFile := range zipReader.File {
 		fmt.Println("Reading file:", zipFile.Name)
@@ -167,6 +178,9 @@ func main() {
 	var diff = out.String()
 	out.Reset()
 
+	diff = strings.ReplaceAll(diff, "a/node", *branchToCheck)
+	diff = strings.ReplaceAll(diff, "b/node", "target node")
+
 	gitCheckoutOriginalBranchCmd := exec.Command("git", "checkout", currentBranch)
 	gitCheckoutOriginalBranchCmd.Stdout = &out
 	err = gitCheckoutOriginalBranchCmd.Run()
@@ -200,4 +214,23 @@ func readZipFile(zf *zip.File) ([]byte, error) {
 	}
 	defer f.Close()
 	return ioutil.ReadAll(f)
+}
+
+func removeContents(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	names, err := d.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		err = os.RemoveAll(filepath.Join(dir, name))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
